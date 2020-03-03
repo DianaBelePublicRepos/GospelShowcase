@@ -1,0 +1,24 @@
+          - alert: ContainerRestartExperiment2
+            expr: irate(kube_pod_container_status_restarts_total[5m]) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Container Restart! (instance {{ $labels.instance }})"
+              description: "Container Restart! \n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: ContainerRestartExperiment3
+            expr: changes (kube_pod_container_status_restarts_total[5m]) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Container Restart! (instance {{ $labels.instance }})"
+              description: "Container Restart! \n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: ContainerRestartExperiment4
+            expr: idelta(kube_pod_container_status_restarts_total[5m]) > 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Container Restart! (instance {{ $labels.instance }})"
+              description: "Container Restart! \n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

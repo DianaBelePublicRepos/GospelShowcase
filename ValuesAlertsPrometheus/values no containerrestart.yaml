@@ -1,0 +1,112 @@
+serverFiles:
+  alerts:
+    groups:
+      - name: Instances
+        rules:
+          - alert: InstanceDown
+            expr: up == 0
+            for: 1m
+            labels:
+              severity: page
+            annotations:
+              description: '{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute.'
+              summary: 'Instance {{ $labels.instance }} down'
+          - alert: OutOfMemory
+            expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 10
+            for: 5m
+            labels:
+              severity: page
+            annotations:
+              summary: "Out of memory (instance {{ $labels.instance }})"
+              description: "Node memory is filling up (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: OutOfDiskSpace
+            expr: node_filesystem_avail_bytes* 100/ node_filesystem_size_bytes < 10
+            for: 5m
+            labels:
+              severity: page
+            annotations:
+              summary: "Out of disk space (instance {{ $labels.instance }})"
+              description: "Disk is almost full (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: DiskWillFillIn4Hours
+            expr: predict_linear(node_filesystem_free_bytes{fstype!~"tmpfs"}[1h], 4 * 3600) < 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Disk will fill in 4 hours (instance {{ $labels.instance }})"
+              description: "Disk will fill in 4 hours at current write rate\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: HighCpuLoad
+            expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High CPU load (instance {{ $labels.instance }})"
+              description: "CPU load is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: OutOfInodes
+            expr: node_filesystem_files_free{mountpoint ="/"} / node_filesystem_files{mountpoint ="/"} * 100 < 10
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Out of inodes (instance {{ $labels.instance }})"
+              description: "Disk is almost running out of available inodes (< 10% left)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: UnusualNetworkThroughputIn
+            expr: sum by (instance) (irate(node_network_receive_bytes_total[2m])) / 1024 / 1024 > 100
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Unusual network throughput in (instance {{ $labels.instance }})"
+              description: "Host network interfaces are probably receiving too much data (> 100 MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: UnusualNetworkThroughputOut
+            expr: sum by (instance) (irate(node_network_transmit_bytes_total[2m])) / 1024 / 1024 > 100
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Unusual network throughput out (instance {{ $labels.instance }})"
+              description: "Host network interfaces are probably sending too much data (> 100 MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: UnusualDiskReadRate
+            expr: sum by (instance) (irate(node_disk_read_bytes_total[2m])) / 1024 / 1024 > 50
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Unusual disk read rate (instance {{ $labels.instance }})"
+              description: "Disk is probably reading too much data (> 50 MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: UnusualDiskWriteRate
+            expr: sum by (instance) (irate(node_disk_written_bytes_total[2m])) / 1024 / 1024 > 50
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Unusual disk write rate (instance {{ $labels.instance }})"
+              description: "Disk is probably writing too much data (> 50 MB/s)\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: KubernetesPersistentvolumeclaimPending
+            expr: kube_persistentvolumeclaim_status_phase{phase="Pending", persistentvolumeclaim!~"gospel-efs-data|efs-claim"} == 1
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Kubernetes PersistentVolumeClaim pending (instance {{ $labels.instance }})"
+              description: "PersistentVolumeClaim {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} is pending\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+          - alert: DaemonsetDown
+            expr: (kube_daemonset_status_desired_number_scheduled/ kube_daemonset_status_number_available) != 1
+            for: 5m
+            labels:
+              severity: page
+            annotations:
+              summary: "Daemonset down (instance {{ $labels.instance }})"
+              description: "A Daemonset went down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+alertmanagerFiles:
+  alertmanager.yml:
+    route:
+      receiver: slack-gospel
+
+    receivers:
+      - name: slack-gospel
+        slack_configs:
+         - channel: '#alerts'
+           api_url: 'https://hooks.slack.com/services/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'
+           send_resolved: true
